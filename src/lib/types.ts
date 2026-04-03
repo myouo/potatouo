@@ -18,6 +18,10 @@ export interface Settings {
   volume: number;
   notificationsEnabled: boolean;
   backgroundOpacity: number;
+  bgPositionX: number;
+  bgPositionY: number;
+  bgSize: 'cover' | 'contain';
+  theme: 'dark' | 'light' | 'system';
 }
 
 export const DEFAULT_MODES: Mode[] = [
@@ -31,4 +35,8 @@ export const DEFAULT_SETTINGS: Settings = {
   volume: 0.8,
   notificationsEnabled: false,
   backgroundOpacity: 0.6,
+  bgPositionX: 50,
+  bgPositionY: 50,
+  bgSize: 'cover',
+  theme: 'system',
 };

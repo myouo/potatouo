@@ -33,7 +33,7 @@ const StatsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)', zIndex: 20,
+      background: 'var(--modal-backdrop)', zIndex: 20,
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }} className="animate-fade-in" onClick={onClose}>
       <div 
@@ -47,18 +47,18 @@ const StatsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '12px' }}>
+          <div style={{ background: 'var(--glass-item-bg)', padding: '20px', borderRadius: '12px' }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Today's Focus</div>
             <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{todayMinutes} <span style={{ fontSize: '1rem', fontWeight: 'normal' }}>mins</span></div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '12px' }}>
+          <div style={{ background: 'var(--glass-item-bg)', padding: '20px', borderRadius: '12px' }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Pomodoros Today</div>
             <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{todayCount}</div>
           </div>
         </div>
 
         <h3 style={{ marginBottom: '1rem' }}>Last 7 Days (Focus Minutes)</h3>
-        <div style={{ display: 'flex', alignItems: 'flex-end', height: '150px', gap: '10px', marginBottom: '30px', background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', height: '150px', gap: '10px', marginBottom: '30px', background: 'var(--glass-item-bg)', padding: '20px', borderRadius: '12px' }}>
           {last7Days.map((d, i) => {
             const heightPercent = (d.mins / maxMins) * 100;
             return (
@@ -79,11 +79,11 @@ const StatsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         <h3 style={{ marginBottom: '1rem' }}>All Time</h3>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '12px' }}>
+          <div style={{ background: 'var(--glass-item-bg)', padding: '20px', borderRadius: '12px' }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total Focus Time</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{allTimeTotalMins} <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>mins</span></div>
           </div>
-          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '12px' }}>
+          <div style={{ background: 'var(--glass-item-bg)', padding: '20px', borderRadius: '12px' }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total Pomodoros</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{allTimeCount}</div>
           </div>

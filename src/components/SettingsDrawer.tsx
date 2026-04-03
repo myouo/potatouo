@@ -36,7 +36,7 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   return (
     <div style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, width: '400px',
-      background: 'rgba(20, 20, 20, 0.85)',
+      background: 'var(--glass-drawer-bg)',
       backdropFilter: 'blur(20px)',
       borderLeft: '1px solid var(--glass-border)',
       padding: '2rem',
@@ -46,6 +46,21 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h2 style={{ margin: 0 }}>Settings</h2>
         <button className="btn-icon" onClick={onClose}><X size={24} /></button>
+      </div>
+
+      <div className="settings-section" style={{ marginBottom: '2rem' }}>
+        <h3>Appearance</h3>
+        <div style={{ display: 'flex', gap: '10px' }}>
+            <button className={`btn-secondary ${settings.theme === 'dark' ? 'active' : ''}`}
+                    style={{ flex: 1, backgroundColor: settings.theme === 'dark' ? 'var(--accent-color)' : '', color: settings.theme === 'dark' ? '#fff' : '' }}
+                    onClick={() => updateSettings({ theme: 'dark' })}>Dark</button>
+            <button className={`btn-secondary ${settings.theme === 'light' ? 'active' : ''}`}
+                    style={{ flex: 1, backgroundColor: settings.theme === 'light' ? 'var(--accent-color)' : '', color: settings.theme === 'light' ? '#fff' : '' }}
+                    onClick={() => updateSettings({ theme: 'light' })}>Light</button>
+            <button className={`btn-secondary ${settings.theme === 'system' ? 'active' : ''}`}
+                    style={{ flex: 1, backgroundColor: settings.theme === 'system' ? 'var(--accent-color)' : '', color: settings.theme === 'system' ? '#fff' : '' }}
+                    onClick={() => updateSettings({ theme: 'system' })}>System</button>
+        </div>
       </div>
 
       <div className="settings-section" style={{ marginBottom: '2rem' }}>
@@ -59,14 +74,49 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <Trash2 size={18} />
           </button>
         </div>
-        <div className="flex-col" style={{ gap: '8px' }}>
-          <label>Background Dimness ({Math.round(settings.backgroundOpacity * 100)}%)</label>
-          <input 
-            type="range" min="0" max="1" step="0.05" 
-            value={settings.backgroundOpacity} 
-            onChange={(e) => updateSettings({ backgroundOpacity: parseFloat(e.target.value) })}
-            style={{ width: '100%' }}
-          />
+        <div className="flex-col" style={{ gap: '15px' }}>
+          <div className="flex-col" style={{ gap: '8px' }}>
+            <label>Background Dimness ({Math.round(settings.backgroundOpacity * 100)}%)</label>
+            <input 
+              type="range" min="0" max="1" step="0.05" 
+              value={settings.backgroundOpacity} 
+              onChange={(e) => updateSettings({ backgroundOpacity: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              className={`btn-secondary ${settings.bgSize === 'cover' ? 'active' : ''}`}
+              style={{ flex: 1, backgroundColor: settings.bgSize === 'cover' ? 'var(--accent-color)' : '', color: settings.bgSize === 'cover' ? '#fff' : '' }}
+              onClick={() => updateSettings({ bgSize: 'cover' })}
+            >Cover</button>
+            <button 
+              className={`btn-secondary ${settings.bgSize === 'contain' ? 'active' : ''}`}
+              style={{ flex: 1, backgroundColor: settings.bgSize === 'contain' ? 'var(--accent-color)' : '', color: settings.bgSize === 'contain' ? '#fff' : '' }}
+              onClick={() => updateSettings({ bgSize: 'contain' })}
+            >Contain</button>
+          </div>
+
+          <div className="flex-col" style={{ gap: '8px' }}>
+            <label>Horizontal Position ({settings.bgPositionX ?? 50}%)</label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={settings.bgPositionX ?? 50} 
+              onChange={(e) => updateSettings({ bgPositionX: parseInt(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          <div className="flex-col" style={{ gap: '8px' }}>
+            <label>Vertical Position ({settings.bgPositionY ?? 50}%)</label>
+            <input 
+              type="range" min="0" max="100" step="1" 
+              value={settings.bgPositionY ?? 50} 
+              onChange={(e) => updateSettings({ bgPositionY: parseInt(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+          </div>
         </div>
       </div>
 
@@ -97,7 +147,7 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           {modes.map(mode => (
             <div key={mode.id} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px',
+              padding: '10px', background: 'var(--glass-item-bg)', borderRadius: '8px',
               border: settings.currentModeId === mode.id ? '1px solid var(--accent-color)' : '1px solid transparent'
             }}>
               <div 
@@ -121,16 +171,16 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           ))}
         </div>
 
-        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ background: 'var(--glass-item-bg)', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Add New Mode</div>
           <input 
             type="text" placeholder="Mode Name (e.g. 50/10)"
             value={newModeName} onChange={(e) => setNewModeName(e.target.value)}
-            style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '8px', borderRadius: '4px' }}
+            style={{ background: 'var(--glass-input-bg)', border: 'none', color: 'var(--text-primary)', padding: '8px', borderRadius: '4px' }}
           />
           <div style={{ display: 'flex', gap: '10px' }}>
-             <input type="number" placeholder="Focus (m)" value={newFocus} onChange={e=>setNewFocus(Number(e.target.value))} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '8px', borderRadius: '4px' }}/>
-             <input type="number" placeholder="Rest (m)" value={newRest} onChange={e=>setNewRest(Number(e.target.value))} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', border: 'none', color: 'white', padding: '8px', borderRadius: '4px' }}/>
+             <input type="number" placeholder="Focus (m)" value={newFocus} onChange={e=>setNewFocus(Number(e.target.value))} style={{ flex: 1, background: 'var(--glass-input-bg)', border: 'none', color: 'var(--text-primary)', padding: '8px', borderRadius: '4px' }}/>
+             <input type="number" placeholder="Rest (m)" value={newRest} onChange={e=>setNewRest(Number(e.target.value))} style={{ flex: 1, background: 'var(--glass-input-bg)', border: 'none', color: 'var(--text-primary)', padding: '8px', borderRadius: '4px' }}/>
              <button className="btn-primary" style={{ padding: '8px' }} onClick={handleAddMode}><Plus size={20}/></button>
           </div>
         </div>
