@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useContext, useState } from 'react';
 import type { Settings, Mode } from '../lib/types';
-import { DEFAULT_SETTINGS, DEFAULT_MODES } from '../lib/types';
+import { DEFAULT_MODES } from '../lib/types';
 import { getSettings, saveSettings, getModes, saveModes } from '../lib/storage';
 
 interface SettingsContextType {
@@ -16,13 +17,8 @@ interface SettingsContextType {
 const SettingsContext = createContext<SettingsContextType | null>(null);
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [settings, setSettingsState] = useState<Settings>(DEFAULT_SETTINGS);
-  const [modes, setModesState] = useState<Mode[]>(DEFAULT_MODES);
-
-  useEffect(() => {
-    setSettingsState(getSettings());
-    setModesState(getModes());
-  }, []);
+  const [settings, setSettingsState] = useState<Settings>(() => getSettings());
+  const [modes, setModesState] = useState<Mode[]>(() => getModes());
 
   const updateSettings = (partial: Partial<Settings>) => {
     const nextSettings = { ...settings, ...partial };

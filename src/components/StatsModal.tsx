@@ -9,6 +9,11 @@ import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveCo
 // Premium Palette Generation
 const SAAS_PALETTE = ['#FF8A65', '#7986CB', '#4DB6AC', '#FFD54F', '#BA68C8', '#4FC3F7', '#F06292', '#AED581'];
 
+type Last7DaysRow = {
+  date: string;
+  _counts: Record<string, number>;
+} & Record<string, string | number | Record<string, number>>;
+
 const StatsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [history, setHistory] = useState<Session[]>([]);
   const { modes } = useSettings();
@@ -36,7 +41,7 @@ const StatsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Dynamically extract all mode names present in the last 7 days
   const recentModesSet = new Set<string>();
 
-  const last7Days = Array.from({ length: 7 }).map((_, i) => {
+  const last7Days: Last7DaysRow[] = Array.from({ length: 7 }).map((_, i) => {
     const d = startOfDay(subDays(new Date(), 6 - i));
     const dayName = format(d, 'MM-dd');
     const daySessions = history.filter(s => startOfDay(s.date).getTime() === d.getTime());
@@ -69,7 +74,7 @@ const StatsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   // Custom Data parsing for counts chart
   const countsChartData = last7Days.map(d => {
-    const res: any = { date: d.date };
+    const res: Record<string, string | number> = { date: d.date };
     recentModesArray.forEach(m => {
       res[m] = d._counts[m] || 0;
     });
@@ -180,13 +185,19 @@ const StatsModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {allTimeCount > 0 && (
               <div className="glass-card" style={{ padding: '1.5rem' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '1.5rem', fontSize: '1.2rem', fontWeight: 700, textAlign: 'center' }}>Lifetime Mode Distribution</h3>
-                <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie data={modePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={70} outerRadius={110} paddingAngle={3} label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}>
+                <ResponsiveContainer width="100%" height={320}>
+                    <PieChart margin={{ top: 10, right: 110, bottom: 10, left: 10 }}>
+                      <Pie data={modePieData} dataKey="value" nameKey="name" cx="38%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={3} label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}>
                         {modePieData.map((entry, i) => <Cell key={`cell-${i}`} fill={getModeColor(entry.name, i)} stroke="transparent" />)}
                       </Pie>
                       <Tooltip contentStyle={tooltipStyle} />
-                      <Legend iconType="circle" verticalAlign="bottom" height={36}/>
+                      <Legend
+                        iconType="circle"
+                        layout="vertical"
+                        align="right"
+                        verticalAlign="middle"
+                        wrapperStyle={{ fontSize: '0.85rem', paddingLeft: '12px' }}
+                      />
                     </PieChart>
                 </ResponsiveContainer>
               </div>

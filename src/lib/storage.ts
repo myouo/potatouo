@@ -2,7 +2,6 @@ import { get, set, del } from 'idb-keyval';
 import type { Mode, Session, Settings } from './types';
 import { DEFAULT_MODES, DEFAULT_SETTINGS } from './types';
 
-// Used to enforce clean state for the new architecture
 const PREFIX = 'potatouo_v4_';
 
 export const getSettings = (): Settings => {
@@ -38,8 +37,26 @@ export const saveModes = (modes: Mode[]) => {
   localStorage.setItem(`${PREFIX}modes`, JSON.stringify(modes));
 };
 
-// Unified Timer Engine Backup
-export interface TimerEngineState {
+export interface PomodoroTimerBackup {
+  status: 'idle' | 'running' | 'paused' | 'stopped';
+  phase: 'focus' | 'rest';
+  startTimestamp: number | null;
+  accumulatedTime: number;
+}
+
+export interface StopwatchTimerBackup {
+  status: 'idle' | 'running' | 'paused' | 'stopped';
+  startTimestamp: number | null;
+  accumulatedTime: number;
+}
+
+export interface TimerBackupState {
+  activeTimerMode: 'pomodoro' | 'stopwatch';
+  pomodoro: PomodoroTimerBackup;
+  stopwatch: StopwatchTimerBackup;
+}
+
+export interface LegacyTimerEngineState {
   mode: 'pomodoro' | 'stopwatch';
   status: 'idle' | 'running' | 'paused' | 'stopped';
   phase: 'focus' | 'rest';
@@ -47,17 +64,14 @@ export interface TimerEngineState {
   accumulatedTime: number;
 }
 
-export const getTimerBackup = (): TimerEngineState | null => {
+export const getTimerBackup = (): TimerBackupState | LegacyTimerEngineState | null => {
   const data = localStorage.getItem(`${PREFIX}engine_backup`);
   return data ? JSON.parse(data) : null;
 };
 
-export const saveTimerBackup = (backup: TimerEngineState) => {
+export const saveTimerBackup = (backup: TimerBackupState) => {
   localStorage.setItem(`${PREFIX}engine_backup`, JSON.stringify(backup));
 };
-
-
-// ** IndexedDB Wrappers **
 
 export const getBackgroundImage = async (): Promise<string | null> => {
   try {
