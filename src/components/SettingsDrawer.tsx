@@ -171,18 +171,36 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
           ))}
         </div>
 
-        <div style={{ background: 'var(--glass-item-bg)', padding: '15px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Add New Mode</div>
-          <input 
-            type="text" placeholder="Mode Name (e.g. 50/10)"
-            value={newModeName} onChange={(e) => setNewModeName(e.target.value)}
-            style={{ background: 'var(--glass-input-bg)', border: 'none', color: 'var(--text-primary)', padding: '8px', borderRadius: '4px' }}
-          />
-          <div style={{ display: 'flex', gap: '10px' }}>
-             <input type="number" placeholder="Focus (m)" value={newFocus} onChange={e=>setNewFocus(Number(e.target.value))} style={{ flex: 1, background: 'var(--glass-input-bg)', border: 'none', color: 'var(--text-primary)', padding: '8px', borderRadius: '4px' }}/>
-             <input type="number" placeholder="Rest (m)" value={newRest} onChange={e=>setNewRest(Number(e.target.value))} style={{ flex: 1, background: 'var(--glass-input-bg)', border: 'none', color: 'var(--text-primary)', padding: '8px', borderRadius: '4px' }}/>
-             <button className="btn-primary" style={{ padding: '8px' }} onClick={handleAddMode}><Plus size={20}/></button>
+        {/* ADD NEW MODE FORM */}
+        <div className="glass-card" style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '10px' }}>Create Custom Timer</h3>
+          
+          <div>
+            <label className="modern-label">Mode Identifier</label>
+            <input 
+              className="modern-input"
+              type="text" 
+              placeholder="e.g. Deep Work (90m)"
+              value={newModeName} 
+              onChange={(e) => setNewModeName(e.target.value)}
+            />
           </div>
+
+          <div className="form-grid" style={{ marginBottom: '10px' }}>
+            <div>
+               <label className="modern-label">Focus (Minutes)</label>
+               <input className="modern-input" type="number" placeholder="25" value={newFocus} onChange={e=>setNewFocus(Number(e.target.value))} />
+            </div>
+            <div>
+               <label className="modern-label">Rest (Minutes)</label>
+               <input className="modern-input" type="number" placeholder="5" value={newRest} onChange={e=>setNewRest(Number(e.target.value))} />
+            </div>
+          </div>
+
+          <button className="modern-button" onClick={handleAddMode}>
+            <span>Add New Mode</span>
+            <Plus size={20} />
+          </button>
         </div>
       </div>
     </div>

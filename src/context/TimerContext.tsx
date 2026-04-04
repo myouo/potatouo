@@ -2,22 +2,43 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { useSettings } from './SettingsContext';
 import { getTimerBackup, saveTimerBackup, addHistorySession } from '../lib/storage';
 
+export type ActiveTimerMode = 'pomodoro' | 'stopwatch';
+export type TimerStatus = 'idle' | 'running' | 'paused' | 'stopped';
 export type TimerPhase = 'focus' | 'rest';
-export type TimerStatus = 'playing' | 'paused' | 'stopped';
+
+export interface TimerEngineState {
+  mode: ActiveTimerMode;
+  status: TimerStatus;
+  phase: TimerPhase;
+  startTimestamp: number | null;
+  accumulatedTime: number;
+}
 
 interface TimerContextType {
+  activeTimerMode: ActiveTimerMode;
+  setActiveTimerMode: (m: ActiveTimerMode) => void;
   phase: TimerPhase;
   status: TimerStatus;
-  remainingTime: number; // in seconds
+  
+  // Expose derived calculations for UI
+  remainingTime: number; 
+  stopwatchElapsed: number;
+  stopwatchStatus: TimerStatus;
+
+  // Unified Actions (they map logic depending on active mode)
   startTimer: () => void;
   pauseTimer: () => void;
-  resetTimer: () => void;
+  stopTimer: () => void;  // Unified stop
+  resetTimer: () => void; // Reset to focus
   skipPhase: () => void;
+  
+  // Specific Stopwatch Aliases
+  startStopwatch: () => void;
+  pauseStopwatch: () => void;
+  stopStopwatch: () => void;
 }
 
 const TimerContext = createContext<TimerContextType | null>(null);
-
-// We will use a reliable AudioContext custom beep to guarantee it works without assets instead of base64 mp3.
 
 const playBeep = (volume: number) => {
   try {
@@ -43,87 +64,93 @@ const notify = (title: string, body: string, enabled: boolean) => {
   }
 };
 
+const DEFAULT_STATE: TimerEngineState = {
+  mode: 'pomodoro',
+  status: 'stopped',
+  phase: 'focus',
+  startTimestamp: null,
+  accumulatedTime: 0
+};
+
 export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentMode, settings } = useSettings();
   
-  const [phase, setPhase] = useState<TimerPhase>('focus');
-  const [status, setStatus] = useState<TimerStatus>('stopped');
-  const [remainingTime, setRemainingTime] = useState<number>(currentMode.focusTime * 60);
+  // The Single Source of Truth
+  const engineRef = useRef<TimerEngineState>(DEFAULT_STATE);
   
-  const targetEndTimeRef = useRef<number | null>(null);
-  const intervalRef = useRef<number | null>(null);
+  // Dummy state to force React re-renders when UI needs updating
+  const [tick, setTick] = useState(0);
+  const syncUI = () => setTick(t => t + 1);
 
-  // Initialize from backup or default
+  // Initialization & Load
   useEffect(() => {
     const backup = getTimerBackup();
+    
     if (backup) {
-      setPhase(backup.type);
-      setStatus(backup.state);
-      setRemainingTime(backup.remainingTime);
-      targetEndTimeRef.current = backup.targetEndTime;
+      const state = { ...DEFAULT_STATE, ...backup };
       
-      if (backup.state === 'playing' && backup.targetEndTime) {
-        const left = Math.round((backup.targetEndTime - Date.now()) / 1000);
-        if (left <= 0) {
-          handlePhaseComplete(backup.type);
-        } else {
-          setRemainingTime(left);
+      // Strict Initialization Recovery Logic
+      if (state.status === 'running' && state.startTimestamp) {
+         // Valid running state -> Keep it running
+      } else {
+         // ANY other state (stopped, paused, or missing timestamp) -> Force non-running
+         state.status = (state.status === 'paused') ? 'paused' : 'stopped';
+         state.startTimestamp = null;
+      }
+      engineRef.current = state;
+    }
+    syncUI();
+    
+    // The Engine Tick Loop
+    const interval = window.setInterval(() => {
+      const state = engineRef.current;
+      if (state.status !== 'running') return;
+      
+      let requiresSync = true;
+
+      if (state.mode === 'pomodoro' && state.startTimestamp) {
+        const targetSeconds = state.phase === 'focus' ? currentMode.focusTime * 60 : currentMode.restTime * 60;
+        const elapsed = state.accumulatedTime + Math.floor((Date.now() - state.startTimestamp) / 1000);
+        
+        if (elapsed >= targetSeconds) {
+          handlePhaseComplete();
+          requiresSync = false; // complete handles sync
         }
       }
-    } else {
-      setRemainingTime(currentMode.focusTime * 60);
-    }
-  }, []); // Only on mount
+      
+      if (requiresSync) {
+         saveStateToStorage();
+         syncUI();
+      }
+    }, 500);
 
-  // Sync title and favicon
-  useEffect(() => {
-    const min = Math.floor(remainingTime / 60).toString().padStart(2, '0');
-    const sec = (remainingTime % 60).toString().padStart(2, '0');
-    const phaseIcon = phase === 'focus' ? '🍅' : '☕';
-    document.title = `${min}:${sec} ${phaseIcon}`;
-  }, [remainingTime, phase]);
+    return () => clearInterval(interval);
+  }, [currentMode.focusTime, currentMode.restTime]); // Re-bind if config bounds explicitly change
 
-  const saveState = () => {
-    if (status !== 'stopped') {
-       saveTimerBackup({
-         type: phase,
-         state: status,
-         targetEndTime: targetEndTimeRef.current,
-         remainingTime
-       });
+  const saveStateToStorage = () => {
+    const state = engineRef.current;
+    if (state.status === 'stopped' || state.status === 'idle') {
+       localStorage.removeItem('potatouo_v4_engine_backup');
     } else {
-       localStorage.removeItem('pomodoro_timer_backup');
+       // Persist clean single-source state
+       saveTimerBackup(state); 
     }
   };
 
-  useEffect(() => {
-    if (status === 'playing') {
-      intervalRef.current = window.setInterval(() => {
-        if (!targetEndTimeRef.current) return;
-        const left = Math.round((targetEndTimeRef.current - Date.now()) / 1000);
-        
-        if (left <= 0) {
-          handlePhaseComplete(phase);
-        } else {
-          setRemainingTime(left);
-          saveState();
-        }
-      }, 500);
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      saveState();
+  const getElapsed = () => {
+    const state = engineRef.current;
+    if (state.status === 'running' && state.startTimestamp) {
+      return state.accumulatedTime + Math.floor((Date.now() - state.startTimestamp) / 1000);
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [status, phase]);
+    return state.accumulatedTime;
+  };
 
-  const handlePhaseComplete = async (completedPhase: TimerPhase) => {
+  const handlePhaseComplete = async () => {
     playBeep(settings.volume);
+    const state = engineRef.current;
     
-    if (completedPhase === 'focus') {
+    if (state.phase === 'focus') {
       notify('Focus Complete!', 'Time for a break.', settings.notificationsEnabled);
-      // Save history
       await addHistorySession({
         id: Date.now().toString(),
         modeId: currentMode.id,
@@ -131,50 +158,156 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         restDuration: 0,
         date: Date.now()
       });
-      setPhase('rest');
-      setRemainingTime(currentMode.restTime * 60);
-      targetEndTimeRef.current = Date.now() + currentMode.restTime * 60 * 1000;
+      state.phase = 'rest';
+      state.accumulatedTime = 0;
+      state.startTimestamp = Date.now(); // Auto-start the rest phase
     } else {
       notify('Break Complete!', 'Ready to focus?', settings.notificationsEnabled);
-      // We could update the last session's restDuration but for simplicity we consider rest a separate end
-      setPhase('focus');
-      setStatus('stopped');
-      setRemainingTime(currentMode.focusTime * 60);
-      targetEndTimeRef.current = null;
+      state.phase = 'focus';
+      state.accumulatedTime = 0;
+      state.startTimestamp = null;
+      state.status = 'stopped'; // Wait for user to start focus voluntarily
+    }
+    
+    saveStateToStorage();
+    syncUI();
+  };
+
+  // -------------------------
+  // Unified Actions
+  // -------------------------
+
+  const internalStart = (mode: ActiveTimerMode) => {
+    const state = engineRef.current;
+    if (state.status === 'running') return;
+    
+    if (state.mode !== mode || state.status === 'stopped') {
+       // Deep reset context if modes diverge
+       state.mode = mode;
+       state.accumulatedTime = 0;
+       if (mode === 'pomodoro') state.phase = 'focus';
+    }
+
+    if (settings.notificationsEnabled && 'Notification' in window && Notification.permission !== 'granted') {
+      Notification.requestPermission();
+    }
+
+    state.status = 'running';
+    state.startTimestamp = Date.now();
+    
+    saveStateToStorage();
+    syncUI();
+  };
+
+  const internalPause = () => {
+    const state = engineRef.current;
+    if (state.status !== 'running') return;
+    
+    if (state.startTimestamp) {
+      state.accumulatedTime += Math.floor((Date.now() - state.startTimestamp) / 1000);
+    }
+    state.status = 'paused';
+    state.startTimestamp = null;
+    
+    saveStateToStorage();
+    syncUI();
+  };
+
+  const internalStop = async () => {
+    const state = engineRef.current;
+    
+    // Capture state for history write before wiping engine
+    const elapsed = getElapsed();
+    const currentModeSave = state.mode;
+
+    // 1. CLEAR ENGINE COMPLETELY (Synchronously!)
+    state.status = 'stopped';
+    state.accumulatedTime = 0;
+    state.startTimestamp = null;
+    
+    saveStateToStorage();
+    syncUI();
+
+    // 2. Perform DB writing asynchronously
+    if (elapsed > 0) {
+       if (currentModeSave === 'stopwatch') {
+          await addHistorySession({
+             id: Date.now().toString(),
+             modeId: 'stopwatch',
+             focusDuration: elapsed,
+             restDuration: 0,
+             date: Date.now()
+          });
+       } else if (currentModeSave === 'pomodoro' && state.phase === 'focus') {
+          // If stopped early in Pomodoro, we record what they did
+          await addHistorySession({
+             id: Date.now().toString(),
+             modeId: currentMode.id,
+             focusDuration: elapsed,
+             restDuration: 0,
+             date: Date.now()
+          });
+       }
     }
   };
 
-  const startTimer = () => {
-    if (status === 'playing') return;
-    if (status === 'stopped') {
-      // Ask for notification permission if enabled in settings but not granted
-      if (settings.notificationsEnabled && 'Notification' in window && Notification.permission !== 'granted') {
-        Notification.requestPermission();
-      }
+  const skipPhase = () => handlePhaseComplete();
+
+  // -------------------------
+  // Derivations for UI
+  // -------------------------
+
+  const state = engineRef.current;
+  const elapsedSeconds = getElapsed();
+  
+  let remainingTime = 0;
+  if (state.mode === 'pomodoro') {
+     const target = state.phase === 'focus' ? currentMode.focusTime * 60 : currentMode.restTime * 60;
+     remainingTime = Math.max(0, target - elapsedSeconds);
+  }
+  
+  let stopwatchElapsed = 0;
+  if (state.mode === 'stopwatch') {
+     stopwatchElapsed = elapsedSeconds;
+  }
+
+  // Title Sync
+  useEffect(() => {
+    if (state.mode === 'pomodoro') {
+      const min = Math.floor(remainingTime / 60).toString().padStart(2, '0');
+      const sec = (remainingTime % 60).toString().padStart(2, '0');
+      const phaseIcon = state.phase === 'focus' ? '🍅' : '☕';
+      document.title = `${min}:${sec} ${phaseIcon}`;
+    } else {
+      const hrs = Math.floor(stopwatchElapsed / 3600);
+      const min = Math.floor((stopwatchElapsed % 3600) / 60).toString().padStart(2, '0');
+      const sec = (stopwatchElapsed % 60).toString().padStart(2, '0');
+      const timeStr = hrs > 0 ? `${hrs}:${min}:${sec}` : `${min}:${sec}`;
+      document.title = `${timeStr} ⏱️`;
     }
-    targetEndTimeRef.current = Date.now() + remainingTime * 1000;
-    setStatus('playing');
-  };
-
-  const pauseTimer = () => {
-    setStatus('paused');
-    targetEndTimeRef.current = null;
-  };
-
-  const resetTimer = () => {
-    setStatus('stopped');
-    setPhase('focus');
-    setRemainingTime(currentMode.focusTime * 60);
-    targetEndTimeRef.current = null;
-    localStorage.removeItem('pomodoro_timer_backup');
-  };
-
-  const skipPhase = () => {
-    handlePhaseComplete(phase);
-  };
+  }, [remainingTime, state.phase, state.mode, stopwatchElapsed]);
 
   return (
-    <TimerContext.Provider value={{ phase, status, remainingTime, startTimer, pauseTimer, resetTimer, skipPhase }}>
+    <TimerContext.Provider value={{
+      activeTimerMode: state.mode,
+      setActiveTimerMode: (m) => { engineRef.current.mode = m; syncUI(); },
+      phase: state.phase,
+      status: state.status,
+      
+      remainingTime,
+      stopwatchElapsed, // Unified
+      stopwatchStatus: state.mode === 'stopwatch' ? state.status : 'stopped', // Compatibility map
+      
+      startTimer: () => internalStart('pomodoro'),
+      pauseTimer: internalPause,
+      stopTimer: internalStop,
+      resetTimer: () => { internalStop(); engineRef.current.phase = 'focus'; syncUI(); },
+      skipPhase,
+
+      startStopwatch: () => internalStart('stopwatch'),
+      pauseStopwatch: internalPause,
+      stopStopwatch: internalStop
+    }}>
       {children}
     </TimerContext.Provider>
   );

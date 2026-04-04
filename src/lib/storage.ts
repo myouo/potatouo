@@ -2,10 +2,11 @@ import { get, set, del } from 'idb-keyval';
 import type { Mode, Session, Settings } from './types';
 import { DEFAULT_MODES, DEFAULT_SETTINGS } from './types';
 
-// ** LocalStorage Wrappers **
+// Used to enforce clean state for the new architecture
+const PREFIX = 'potatouo_v4_';
 
 export const getSettings = (): Settings => {
-  const store = localStorage.getItem('pomodoro_settings');
+  const store = localStorage.getItem(`${PREFIX}settings`);
   if (store) {
     try {
       return { ...DEFAULT_SETTINGS, ...JSON.parse(store) };
@@ -17,11 +18,11 @@ export const getSettings = (): Settings => {
 };
 
 export const saveSettings = (settings: Settings) => {
-  localStorage.setItem('pomodoro_settings', JSON.stringify(settings));
+  localStorage.setItem(`${PREFIX}settings`, JSON.stringify(settings));
 };
 
 export const getModes = (): Mode[] => {
-  const store = localStorage.getItem('pomodoro_modes');
+  const store = localStorage.getItem(`${PREFIX}modes`);
   if (store) {
     try {
       const parsed = JSON.parse(store);
@@ -34,24 +35,25 @@ export const getModes = (): Mode[] => {
 };
 
 export const saveModes = (modes: Mode[]) => {
-  localStorage.setItem('pomodoro_modes', JSON.stringify(modes));
+  localStorage.setItem(`${PREFIX}modes`, JSON.stringify(modes));
 };
 
-// Timer Backup State
-export interface TimerStateBackup {
-  type: 'focus' | 'rest';
-  state: 'playing' | 'paused' | 'stopped';
-  targetEndTime: number | null; // absolute unix epoch
-  remainingTime: number; // useful if paused
+// Unified Timer Engine Backup
+export interface TimerEngineState {
+  mode: 'pomodoro' | 'stopwatch';
+  status: 'idle' | 'running' | 'paused' | 'stopped';
+  phase: 'focus' | 'rest';
+  startTimestamp: number | null;
+  accumulatedTime: number;
 }
 
-export const getTimerBackup = (): TimerStateBackup | null => {
-  const data = localStorage.getItem('pomodoro_timer_backup');
+export const getTimerBackup = (): TimerEngineState | null => {
+  const data = localStorage.getItem(`${PREFIX}engine_backup`);
   return data ? JSON.parse(data) : null;
 };
 
-export const saveTimerBackup = (backup: TimerStateBackup) => {
-  localStorage.setItem('pomodoro_timer_backup', JSON.stringify(backup));
+export const saveTimerBackup = (backup: TimerEngineState) => {
+  localStorage.setItem(`${PREFIX}engine_backup`, JSON.stringify(backup));
 };
 
 
@@ -59,7 +61,7 @@ export const saveTimerBackup = (backup: TimerStateBackup) => {
 
 export const getBackgroundImage = async (): Promise<string | null> => {
   try {
-    const dataUrl = await get('pomodoro_background');
+    const dataUrl = await get(`${PREFIX}background`);
     return dataUrl || null;
   } catch (e) {
     console.error('Failed to get background image', e);
@@ -69,7 +71,7 @@ export const getBackgroundImage = async (): Promise<string | null> => {
 
 export const saveBackgroundImage = async (dataUrl: string) => {
   try {
-    await set('pomodoro_background', dataUrl);
+    await set(`${PREFIX}background`, dataUrl);
   } catch (e) {
     console.error('Failed to save background image', e);
   }
@@ -77,7 +79,7 @@ export const saveBackgroundImage = async (dataUrl: string) => {
 
 export const clearBackgroundImage = async () => {
   try {
-    await del('pomodoro_background');
+    await del(`${PREFIX}background`);
   } catch (e) {
     console.error('Failed to clear background image', e);
   }
@@ -85,7 +87,7 @@ export const clearBackgroundImage = async () => {
 
 export const getHistory = async (): Promise<Session[]> => {
   try {
-    const history = await get('pomodoro_history');
+    const history = await get(`${PREFIX}history`);
     return history || [];
   } catch (e) {
     console.error('Failed to get history', e);
@@ -97,7 +99,7 @@ export const addHistorySession = async (session: Session) => {
   try {
     const history = await getHistory();
     history.push(session);
-    await set('pomodoro_history', history);
+    await set(`${PREFIX}history`, history);
   } catch (e) {
     console.error('Failed to add history session', e);
   }
