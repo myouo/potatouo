@@ -5,6 +5,7 @@ This template provides a minimal setup to get React working in Vite with HMR and
 ## Local Development
 
 Use the package manager already configured for the project, then start the Vite development server to preview changes locally.
+Run linting before sharing changes so template updates stay easy to review.
 
 Currently, two official plugins are available:
 
