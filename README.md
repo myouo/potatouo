@@ -75,3 +75,5 @@ export default defineConfig([
   },
 ])
 ```
+
+刷新一下被删除的记录测试修改。
