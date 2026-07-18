@@ -243,12 +243,19 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return;
     }
 
-    notify('Break Complete!', 'Ready to focus?', settings.notificationsEnabled);
-    pomodoro.phase = 'focus';
-    pomodoro.status = 'stopped';
+    if (settings.autoLoop) {
+      notify('Break Complete!', 'Starting next focus session.', settings.notificationsEnabled);
+      pomodoro.phase = 'focus';
+      pomodoro.status = 'running';
+      pomodoro.startTimestamp = getTimestamp();
+    } else {
+      notify('Break Complete!', 'Ready to focus?', settings.notificationsEnabled);
+      pomodoro.phase = 'focus';
+      pomodoro.status = 'stopped';
+    }
     saveStateToStorage();
     syncUI();
-  }, [currentMode.focusTime, currentMode.id, settings.notificationsEnabled, settings.volume, syncUI]);
+  }, [currentMode.focusTime, currentMode.id, settings.notificationsEnabled, settings.autoLoop, settings.volume, syncUI]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {

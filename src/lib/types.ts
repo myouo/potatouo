@@ -22,6 +22,7 @@ export interface Settings {
   bgPositionY: number;
   bgSize: 'cover' | 'contain';
   theme: 'dark' | 'light' | 'system';
+  autoLoop: boolean;
 }
 
 export const DEFAULT_MODES: Mode[] = [
@@ -39,4 +40,5 @@ export const DEFAULT_SETTINGS: Settings = {
   bgPositionY: 50,
   bgSize: 'cover',
   theme: 'system',
+  autoLoop: false,
 };

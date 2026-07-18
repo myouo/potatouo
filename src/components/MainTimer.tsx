@@ -9,7 +9,7 @@ const MainTimer: React.FC = () => {
     phase, status, remainingTime, startTimer, pauseTimer, resetTimer, skipPhase,
     stopwatchStatus, stopwatchElapsed, startStopwatch, pauseStopwatch, stopStopwatch
   } = useTimer();
-  const { currentMode } = useSettings();
+  const { currentMode, settings, updateSettings } = useSettings();
 
   // Pomodoro Strings
   const pMins = Math.floor(remainingTime / 60).toString().padStart(2, '0');
@@ -119,6 +119,19 @@ const MainTimer: React.FC = () => {
           </button>
         )}
       </div>
+
+      {activeTimerMode === 'pomodoro' && (
+        <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+          <input 
+            type="checkbox" 
+            id="autoLoopCheck"
+            checked={settings.autoLoop}
+            onChange={(e) => updateSettings({ autoLoop: e.target.checked })}
+            style={{ cursor: 'pointer' }}
+          />
+          <label htmlFor="autoLoopCheck" style={{ cursor: 'pointer', userSelect: 'none' }}>Auto-loop Timer</label>
+        </div>
+      )}
     </div>
   );
 };
