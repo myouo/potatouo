@@ -18,6 +18,7 @@ interface PomodoroEngineState {
   phase: TimerPhase;
   startTimestamp: number | null;
   accumulatedTime: number;
+  loopCount: number;
 }
 
 interface StopwatchEngineState {
@@ -38,6 +39,7 @@ interface TimerContextType {
   phase: TimerPhase;
   status: TimerStatus;
   remainingTime: number;
+  loopCount: number;
   stopwatchElapsed: number;
   stopwatchStatus: TimerStatus;
   startTimer: () => void;
@@ -98,7 +100,8 @@ const DEFAULT_POMODORO_STATE: PomodoroEngineState = {
   status: 'stopped',
   phase: 'focus',
   startTimestamp: null,
-  accumulatedTime: 0
+  accumulatedTime: 0,
+  loopCount: 1
 };
 
 const DEFAULT_STOPWATCH_STATE: StopwatchEngineState = {
@@ -113,11 +116,13 @@ const createDefaultState = (): TimerEngineState => ({
   stopwatch: { ...DEFAULT_STOPWATCH_STATE }
 });
 
-const sanitizePomodoroState = (state?: Partial<PomodoroTimerBackup>): PomodoroEngineState => {
+const sanitizePomodoroState = (state?: Partial<PomodoroTimerBackup & { loopCount?: number }>): PomodoroEngineState => {
   const normalized: PomodoroEngineState = {
     ...DEFAULT_POMODORO_STATE,
     ...state
   };
+  
+  if (normalized.loopCount === undefined) normalized.loopCount = 1;
 
   normalized.phase = normalized.phase === 'rest' ? 'rest' : 'focus';
   normalized.status = normalized.status === 'running' ? 'running' : normalized.status === 'paused' ? 'paused' : 'stopped';
@@ -226,11 +231,6 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     if (completedPhase === 'focus') {
       notify('Focus Complete!', 'Time for a break.', settings.notificationsEnabled);
-      pomodoro.phase = 'rest';
-      pomodoro.status = 'running';
-      pomodoro.startTimestamp = getTimestamp();
-      saveStateToStorage();
-      syncUI();
 
       const sessionStamp = createSessionStamp();
       await addHistorySession({
@@ -240,6 +240,26 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         restDuration: 0,
         date: sessionStamp.date
       });
+
+      if (settings.skipBreak) {
+        if (settings.autoLoop) {
+          pomodoro.phase = 'focus';
+          pomodoro.status = 'running';
+          pomodoro.startTimestamp = getTimestamp();
+          pomodoro.loopCount += 1;
+        } else {
+          pomodoro.phase = 'focus';
+          pomodoro.status = 'stopped';
+          pomodoro.loopCount = 1;
+        }
+      } else {
+        pomodoro.phase = 'rest';
+        pomodoro.status = 'running';
+        pomodoro.startTimestamp = getTimestamp();
+      }
+
+      saveStateToStorage();
+      syncUI();
       return;
     }
 
@@ -248,14 +268,16 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       pomodoro.phase = 'focus';
       pomodoro.status = 'running';
       pomodoro.startTimestamp = getTimestamp();
+      pomodoro.loopCount += 1;
     } else {
       notify('Break Complete!', 'Ready to focus?', settings.notificationsEnabled);
       pomodoro.phase = 'focus';
       pomodoro.status = 'stopped';
+      pomodoro.loopCount = 1;
     }
     saveStateToStorage();
     syncUI();
-  }, [currentMode.focusTime, currentMode.id, settings.notificationsEnabled, settings.autoLoop, settings.volume, syncUI]);
+  }, [currentMode.focusTime, currentMode.id, settings.notificationsEnabled, settings.autoLoop, settings.skipBreak, settings.volume, syncUI]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -325,6 +347,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     state.phase = 'focus';
     state.accumulatedTime = 0;
     state.startTimestamp = null;
+    state.loopCount = 1;
     saveStateToStorage();
     syncUI();
 
@@ -424,6 +447,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         phase: state.pomodoro.phase,
         status: state.pomodoro.status,
         remainingTime,
+        loopCount: state.pomodoro.loopCount,
         stopwatchElapsed,
         stopwatchStatus: state.stopwatch.status,
         startTimer: startPomodoro,

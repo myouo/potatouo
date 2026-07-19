@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useSettings } from './context/SettingsContext';
 import { getBackgroundImage } from './lib/storage';
 import MainTimer from './components/MainTimer';
-import SettingsDrawer from './components/SettingsDrawer';
-import StatsModal from './components/StatsModal';
 import { Settings, BarChart2, Sun, Moon } from 'lucide-react';
+
+const SettingsDrawer = lazy(() => import('./components/SettingsDrawer'));
+const StatsModal = lazy(() => import('./components/StatsModal'));
 
 function App() {
   const { settings, updateSettings } = useSettings();
@@ -81,8 +82,10 @@ function App() {
 
       <MainTimer />
 
-      {showSettings && <SettingsDrawer onClose={() => setShowSettings(false)} />}
-      {showStats && <StatsModal onClose={() => setShowStats(false)} />}
+      <Suspense fallback={null}>
+        {showSettings && <SettingsDrawer onClose={() => setShowSettings(false)} />}
+        {showStats && <StatsModal onClose={() => setShowStats(false)} />}
+      </Suspense>
     </>
   );
 }

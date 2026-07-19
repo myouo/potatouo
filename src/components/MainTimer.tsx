@@ -6,7 +6,7 @@ import { Play, Pause, Square, SkipForward } from 'lucide-react';
 const MainTimer: React.FC = () => {
   const { 
     activeTimerMode, setActiveTimerMode,
-    phase, status, remainingTime, startTimer, pauseTimer, resetTimer, skipPhase,
+    phase, status, remainingTime, loopCount, startTimer, pauseTimer, resetTimer, skipPhase,
     stopwatchStatus, stopwatchElapsed, startStopwatch, pauseStopwatch, stopStopwatch
   } = useTimer();
   const { currentMode, settings, updateSettings } = useSettings();
@@ -82,6 +82,12 @@ const MainTimer: React.FC = () => {
         {activeTimerMode === 'pomodoro' ? (phase === 'focus' ? 'Focus Time' : 'Rest Break') : 'Open Timer'}
       </div>
       
+      {activeTimerMode === 'pomodoro' && settings.autoLoop && settings.showLoopCounter && (
+        <div style={{ fontWeight: 'bold', color: 'var(--text-secondary)', marginBottom: '5px' }}>
+          Round {loopCount}
+        </div>
+      )}
+
       <div className="timer-text">
         {activeTimerMode === 'pomodoro' ? (
           `${pMins}:${pSecs}`
@@ -121,15 +127,43 @@ const MainTimer: React.FC = () => {
       </div>
 
       {activeTimerMode === 'pomodoro' && (
-        <div style={{ marginTop: '20px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          <input 
-            type="checkbox" 
-            id="autoLoopCheck"
-            checked={settings.autoLoop}
-            onChange={(e) => updateSettings({ autoLoop: e.target.checked })}
-            style={{ cursor: 'pointer' }}
-          />
-          <label htmlFor="autoLoopCheck" style={{ cursor: 'pointer', userSelect: 'none' }}>Auto-loop Timer</label>
+        <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <input 
+                type="checkbox" 
+                id="autoLoopCheck"
+                checked={settings.autoLoop}
+                onChange={(e) => updateSettings({ autoLoop: e.target.checked })}
+                style={{ cursor: 'pointer' }}
+              />
+              <label htmlFor="autoLoopCheck" style={{ cursor: 'pointer', userSelect: 'none' }}>Auto-loop Timer</label>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+              <input 
+                type="checkbox" 
+                id="skipBreakCheck"
+                checked={settings.skipBreak}
+                onChange={(e) => updateSettings({ skipBreak: e.target.checked })}
+                style={{ cursor: 'pointer' }}
+              />
+              <label htmlFor="skipBreakCheck" style={{ cursor: 'pointer', userSelect: 'none' }}>Skip Break</label>
+            </div>
+
+            {settings.autoLoop && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <input 
+                  type="checkbox" 
+                  id="showLoopCounterCheck"
+                  checked={settings.showLoopCounter}
+                  onChange={(e) => updateSettings({ showLoopCounter: e.target.checked })}
+                  style={{ cursor: 'pointer' }}
+                />
+                <label htmlFor="showLoopCounterCheck" style={{ cursor: 'pointer', userSelect: 'none' }}>Show Counter</label>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

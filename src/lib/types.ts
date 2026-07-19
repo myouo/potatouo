@@ -23,6 +23,8 @@ export interface Settings {
   bgSize: 'cover' | 'contain';
   theme: 'dark' | 'light' | 'system';
   autoLoop: boolean;
+  skipBreak: boolean;
+  showLoopCounter: boolean;
 }
 
 export const DEFAULT_MODES: Mode[] = [
@@ -41,4 +43,6 @@ export const DEFAULT_SETTINGS: Settings = {
   bgSize: 'cover',
   theme: 'system',
   autoLoop: false,
+  skipBreak: false,
+  showLoopCounter: false,
 };
