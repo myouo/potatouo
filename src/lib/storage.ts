@@ -1,10 +1,11 @@
 import { get, set, del } from 'idb-keyval';
-import type { BackgroundImage, Mode, Session, Settings } from './types';
+import type { BackgroundImage, Mode, RestMusicTrack, Session, Settings } from './types';
 import { DEFAULT_MODES, DEFAULT_SETTINGS } from './types';
 
 const PREFIX = 'potatouo_v4_';
 const BACKGROUND_LIBRARY_KEY = `${PREFIX}background_images`;
 const LEGACY_BACKGROUND_KEY = `${PREFIX}background`;
+const REST_MUSIC_KEY = `${PREFIX}rest_music`;
 
 export const getSettings = (): Settings => {
   const store = localStorage.getItem(`${PREFIX}settings`);
@@ -138,6 +139,36 @@ export const clearBackgroundImages = async () => {
     del(BACKGROUND_LIBRARY_KEY),
     del(LEGACY_BACKGROUND_KEY),
   ]);
+};
+
+const isRestMusicTrack = (value: unknown): value is RestMusicTrack => {
+  if (!value || typeof value !== 'object') return false;
+  const track = value as Partial<RestMusicTrack>;
+  return (
+    typeof track.name === 'string' &&
+    track.blob instanceof Blob &&
+    typeof track.mimeType === 'string' &&
+    typeof track.size === 'number' &&
+    typeof track.createdAt === 'number'
+  );
+};
+
+export const getRestMusic = async (): Promise<RestMusicTrack | null> => {
+  try {
+    const stored = await get<unknown>(REST_MUSIC_KEY);
+    return isRestMusicTrack(stored) ? stored : null;
+  } catch (error) {
+    console.error('Failed to get rest music', error);
+    return null;
+  }
+};
+
+export const saveRestMusic = async (track: RestMusicTrack) => {
+  await set(REST_MUSIC_KEY, track);
+};
+
+export const clearRestMusic = async () => {
+  await del(REST_MUSIC_KEY);
 };
 
 export const getHistory = async (): Promise<Session[]> => {

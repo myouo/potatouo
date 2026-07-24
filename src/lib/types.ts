@@ -20,6 +20,14 @@ export interface BackgroundImage {
   createdAt: number;
 }
 
+export interface RestMusicTrack {
+  name: string;
+  blob: Blob;
+  mimeType: string;
+  size: number;
+  createdAt: number;
+}
+
 export const BACKGROUND_TRANSITIONS = [
   'fade',
   'zoom-in',
@@ -37,6 +45,9 @@ export interface Settings {
   currentModeId: string;
   volume: number;
   notificationsEnabled: boolean;
+  restMusicEnabled: boolean;
+  restMusicVolume: number;
+  restMusicLoop: boolean;
   backgroundOpacity: number;
   backgroundMode: 'single' | 'carousel';
   backgroundInterval: number;
@@ -61,6 +72,9 @@ export const DEFAULT_SETTINGS: Settings = {
   currentModeId: '1',
   volume: 0.8,
   notificationsEnabled: false,
+  restMusicEnabled: false,
+  restMusicVolume: 0.5,
+  restMusicLoop: true,
   backgroundOpacity: 0.6,
   backgroundMode: 'single',
   backgroundInterval: 15,
