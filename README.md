@@ -6,6 +6,25 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 Use the package manager already configured for the project, then start the Vite development server to preview changes locally.
 
+## Cloudflare Pages
+
+The production build is configured for the `potatouo` Cloudflare Pages project.
+Production is available at [timer.nivalis.is](https://timer.nivalis.is).
+
+Pushes to `main` are automatically linted, built, and deployed by
+`.github/workflows/deploy-pages.yml`.
+
+```bash
+npm install
+npm run deploy:pages
+```
+
+To test the Pages build locally before deploying:
+
+```bash
+npm run preview:pages
+```
+
 Currently, two official plugins are available:
 
 - [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
