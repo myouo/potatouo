@@ -128,7 +128,9 @@ function App() {
         </button>
       </div>
 
-      <MainTimer />
+      <main className="app-main">
+        <MainTimer />
+      </main>
 
       <Suspense fallback={null}>
         {showSettings && <SettingsDrawer onClose={() => setShowSettings(false)} />}
