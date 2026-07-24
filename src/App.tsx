@@ -8,6 +8,7 @@ import {
   type BackgroundTransitionSetting,
 } from './lib/types';
 import MainTimer from './components/MainTimer';
+import RestMusicPlayer from './components/RestMusicPlayer';
 import { Settings, BarChart2, Sun, Moon } from 'lucide-react';
 
 const SettingsDrawer = lazy(() => import('./components/SettingsDrawer'));
@@ -176,6 +177,8 @@ function App() {
       <main className="app-main">
         <MainTimer />
       </main>
+
+      <RestMusicPlayer />
 
       <Suspense fallback={null}>
         {showSettings && <SettingsDrawer onClose={() => setShowSettings(false)} />}

@@ -3,11 +3,18 @@ import { useSettings } from '../context/SettingsContext';
 import {
   addBackgroundImages,
   clearBackgroundImages,
+  clearRestMusic,
   deleteBackgroundImage,
   getBackgroundImages,
+  getRestMusic,
+  saveRestMusic,
 } from '../lib/storage';
-import type { BackgroundImage, BackgroundTransitionSetting } from '../lib/types';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Upload, X } from 'lucide-react';
+import type {
+  BackgroundImage,
+  BackgroundTransitionSetting,
+  RestMusicTrack,
+} from '../lib/types';
+import { ChevronLeft, ChevronRight, Music2, Plus, Trash2, Upload, X } from 'lucide-react';
 
 const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { settings, updateSettings, modes, addMode, deleteMode } = useSettings();
@@ -18,13 +25,42 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>([]);
   const [isImportingImages, setIsImportingImages] = useState(false);
   const [imageImportError, setImageImportError] = useState<string | null>(null);
+  const [restMusic, setRestMusic] = useState<RestMusicTrack | null>(null);
+  const [restMusicPreviewUrl, setRestMusicPreviewUrl] = useState<string | null>(null);
+  const [isImportingMusic, setIsImportingMusic] = useState(false);
+  const [restMusicError, setRestMusicError] = useState<string | null>(null);
 
   useEffect(() => {
     getBackgroundImages().then(setBackgroundImages);
+    getRestMusic().then(setRestMusic);
+  }, []);
+
+  useEffect(() => {
+    if (!restMusic) {
+      setRestMusicPreviewUrl(null);
+      return;
+    }
+
+    const nextPreviewUrl = URL.createObjectURL(restMusic.blob);
+    setRestMusicPreviewUrl(nextPreviewUrl);
+    return () => URL.revokeObjectURL(nextPreviewUrl);
+  }, [restMusic]);
+
+  useEffect(() => {
+    const handlePlaybackError = (event: Event) => {
+      setRestMusicError((event as CustomEvent<string>).detail);
+    };
+
+    window.addEventListener('pomodoro_rest_music_error', handlePlaybackError);
+    return () => window.removeEventListener('pomodoro_rest_music_error', handlePlaybackError);
   }, []);
 
   const notifyBackgroundUpdate = () => {
     window.dispatchEvent(new Event('pomodoro_bg_update'));
+  };
+
+  const notifyRestMusicUpdate = () => {
+    window.dispatchEvent(new Event('pomodoro_rest_music_update'));
   };
 
   const readImageFile = (file: File): Promise<BackgroundImage> => (
@@ -103,6 +139,49 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       safeIndex + direction + backgroundImages.length
     ) % backgroundImages.length;
     updateSettings({ activeBackgroundId: backgroundImages[nextIndex].id });
+  };
+
+  const handleRestMusicUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    setIsImportingMusic(true);
+    setRestMusicError(null);
+
+    try {
+      const track: RestMusicTrack = {
+        name: file.name,
+        blob: file,
+        mimeType: file.type || 'application/octet-stream',
+        size: file.size,
+        createdAt: Date.now(),
+      };
+      await saveRestMusic(track);
+      setRestMusic(track);
+      updateSettings({ restMusicEnabled: true });
+      notifyRestMusicUpdate();
+
+      if (file.type && !document.createElement('audio').canPlayType(file.type)) {
+        setRestMusicError(
+          'Saved successfully, but this browser may not be able to decode this audio format.',
+        );
+      }
+    } catch (error) {
+      console.error('Failed to save rest music', error);
+      setRestMusicError('Could not save this audio file. It may exceed browser storage limits.');
+    } finally {
+      setIsImportingMusic(false);
+    }
+  };
+
+  const handleClearRestMusic = async () => {
+    await clearRestMusic();
+    setRestMusic(null);
+    setRestMusicError(null);
+    updateSettings({ restMusicEnabled: false });
+    notifyRestMusicUpdate();
   };
 
   const handleAddMode = () => {
@@ -351,6 +430,98 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             onChange={(e) => updateSettings({ volume: parseFloat(e.target.value) })}
             style={{ width: '100%' }}
           />
+        </div>
+
+        <div className="rest-music-card">
+          <div className="rest-music-heading">
+            <div>
+              <div className="rest-music-title">
+                <Music2 size={18} />
+                Rest Music
+              </div>
+              <div className="rest-music-hint">
+                Stored only in this browser. Supports audio formats your browser can decode.
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              aria-label="Enable rest music"
+              checked={settings.restMusicEnabled}
+              disabled={!restMusic}
+              onChange={(event) => updateSettings({ restMusicEnabled: event.target.checked })}
+            />
+          </div>
+
+          <div className="rest-music-actions">
+            <label className="btn-secondary flex-center">
+              <Upload size={17} />
+              {isImportingMusic ? 'Saving…' : restMusic ? 'Replace Audio' : 'Upload Audio'}
+              <input
+                type="file"
+                accept="audio/*"
+                disabled={isImportingMusic}
+                style={{ display: 'none' }}
+                onChange={handleRestMusicUpload}
+              />
+            </label>
+            <button
+              className="btn-secondary"
+              aria-label="Clear rest music"
+              title="Clear rest music"
+              disabled={!restMusic}
+              onClick={handleClearRestMusic}
+            >
+              <Trash2 size={17} />
+            </button>
+          </div>
+
+          {restMusic && (
+            <>
+              <div className="rest-music-file">
+                <span title={restMusic.name}>{restMusic.name}</span>
+                <small>{(restMusic.size / 1024 / 1024).toFixed(1)} MB</small>
+              </div>
+              {restMusicPreviewUrl && (
+                <audio
+                  className="rest-music-preview"
+                  src={restMusicPreviewUrl}
+                  controls
+                  preload="metadata"
+                  onError={() => setRestMusicError(
+                    'This browser could not play the selected audio format.',
+                  )}
+                />
+              )}
+              <div className="flex-col" style={{ gap: '8px' }}>
+                <label>
+                  Rest Music Volume ({Math.round(settings.restMusicVolume * 100)}%)
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={settings.restMusicVolume}
+                  onChange={(event) => updateSettings({
+                    restMusicVolume: Number(event.target.value),
+                  })}
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <label className="rest-music-loop">
+                <input
+                  type="checkbox"
+                  checked={settings.restMusicLoop}
+                  onChange={(event) => updateSettings({ restMusicLoop: event.target.checked })}
+                />
+                Loop during the break
+              </label>
+            </>
+          )}
+
+          {restMusicError && (
+            <div className="background-library-error">{restMusicError}</div>
+          )}
         </div>
       </div>
 
