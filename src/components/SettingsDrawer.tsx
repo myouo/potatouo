@@ -16,6 +16,63 @@ import type {
 } from '../lib/types';
 import { ChevronLeft, ChevronRight, Music2, Plus, Trash2, Upload, X } from 'lucide-react';
 
+const REST_MUSIC_FILE_ACCEPT = [
+  'audio/*',
+  '.mp3',
+  '.mp2',
+  '.wav',
+  '.wave',
+  '.ogg',
+  '.oga',
+  '.opus',
+  '.m4a',
+  '.aac',
+  '.flac',
+  '.webm',
+  '.weba',
+  '.aif',
+  '.aiff',
+  '.caf',
+  '.amr',
+  '.3gp',
+  '.mp4',
+  '.wma',
+  '.ape',
+  '.mid',
+  '.midi',
+].join(',');
+
+const AUDIO_MIME_TYPES: Record<string, string> = {
+  mp3: 'audio/mpeg',
+  mp2: 'audio/mpeg',
+  wav: 'audio/wav',
+  wave: 'audio/wav',
+  ogg: 'audio/ogg',
+  oga: 'audio/ogg',
+  opus: 'audio/ogg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  flac: 'audio/flac',
+  webm: 'audio/webm',
+  weba: 'audio/webm',
+  aif: 'audio/aiff',
+  aiff: 'audio/aiff',
+  caf: 'audio/x-caf',
+  amr: 'audio/amr',
+  '3gp': 'audio/3gpp',
+  mp4: 'audio/mp4',
+  wma: 'audio/x-ms-wma',
+  ape: 'audio/ape',
+  mid: 'audio/midi',
+  midi: 'audio/midi',
+};
+
+const resolveAudioMimeType = (file: File) => {
+  if (file.type.startsWith('audio/')) return file.type;
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return AUDIO_MIME_TYPES[extension] ?? (file.type || 'application/octet-stream');
+};
+
 const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { settings, updateSettings, modes, addMode, deleteMode } = useSettings();
   
@@ -151,10 +208,14 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setRestMusicError(null);
 
     try {
+      const mimeType = resolveAudioMimeType(file);
+      const audioBlob = file.type === mimeType
+        ? file
+        : file.slice(0, file.size, mimeType);
       const track: RestMusicTrack = {
         name: file.name,
-        blob: file,
-        mimeType: file.type || 'application/octet-stream',
+        blob: audioBlob,
+        mimeType,
         size: file.size,
         createdAt: Date.now(),
       };
@@ -163,7 +224,7 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       updateSettings({ restMusicEnabled: true });
       notifyRestMusicUpdate();
 
-      if (file.type && !document.createElement('audio').canPlayType(file.type)) {
+      if (mimeType && !document.createElement('audio').canPlayType(mimeType)) {
         setRestMusicError(
           'Saved successfully, but this browser may not be able to decode this audio format.',
         );
@@ -440,7 +501,7 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 Rest Music
               </div>
               <div className="rest-music-hint">
-                Stored only in this browser. Supports audio formats your browser can decode.
+                MP3, WAV, OGG, M4A, AAC, FLAC, OPUS and other browser-playable audio.
               </div>
             </div>
             <input
@@ -458,7 +519,7 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               {isImportingMusic ? 'Saving…' : restMusic ? 'Replace Audio' : 'Upload Audio'}
               <input
                 type="file"
-                accept="audio/*"
+                accept={REST_MUSIC_FILE_ACCEPT}
                 disabled={isImportingMusic}
                 style={{ display: 'none' }}
                 onChange={handleRestMusicUpload}
