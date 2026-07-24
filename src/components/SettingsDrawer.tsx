@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSettings } from '../context/SettingsContext';
-import { saveBackgroundImage, clearBackgroundImage } from '../lib/storage';
-import { X, Upload, Trash2, Plus } from 'lucide-react';
+import {
+  addBackgroundImages,
+  clearBackgroundImages,
+  deleteBackgroundImage,
+  getBackgroundImages,
+} from '../lib/storage';
+import type { BackgroundImage } from '../lib/types';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Upload, X } from 'lucide-react';
 
 const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { settings, updateSettings, modes, addMode, deleteMode } = useSettings();
@@ -9,22 +15,94 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [newModeName, setNewModeName] = useState('');
   const [newFocus, setNewFocus] = useState(25);
   const [newRest, setNewRest] = useState(5);
+  const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>([]);
+  const [isImportingImages, setIsImportingImages] = useState(false);
+  const [imageImportError, setImageImportError] = useState<string | null>(null);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      await saveBackgroundImage(dataUrl);
-      window.dispatchEvent(new Event('pomodoro_bg_update'));
-    };
-    reader.readAsDataURL(file);
+  useEffect(() => {
+    getBackgroundImages().then(setBackgroundImages);
+  }, []);
+
+  const notifyBackgroundUpdate = () => {
+    window.dispatchEvent(new Event('pomodoro_bg_update'));
   };
 
-  const handleClearImage = async () => {
-    await clearBackgroundImage();
-    window.dispatchEvent(new Event('pomodoro_bg_update'));
+  const readImageFile = (file: File): Promise<BackgroundImage> => (
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result !== 'string') {
+          reject(new Error(`Could not read ${file.name}`));
+          return;
+        }
+
+        resolve({
+          id: crypto.randomUUID(),
+          name: file.name,
+          dataUrl: reader.result,
+          createdAt: Date.now(),
+        });
+      };
+      reader.onerror = () => reject(reader.error ?? new Error(`Could not read ${file.name}`));
+      reader.readAsDataURL(file);
+    })
+  );
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    if (files.length === 0) return;
+
+    setIsImportingImages(true);
+    setImageImportError(null);
+
+    try {
+      const importedImages = await Promise.all(files.map(readImageFile));
+      const nextImages = await addBackgroundImages(importedImages);
+      setBackgroundImages(nextImages);
+      if (!settings.activeBackgroundId && nextImages[0]) {
+        updateSettings({ activeBackgroundId: nextImages[0].id });
+      }
+      notifyBackgroundUpdate();
+    } catch (error) {
+      console.error('Failed to import background images', error);
+      setImageImportError('Could not import the selected images. Try smaller files.');
+    } finally {
+      setIsImportingImages(false);
+    }
+  };
+
+  const handleClearImages = async () => {
+    await clearBackgroundImages();
+    setBackgroundImages([]);
+    updateSettings({ activeBackgroundId: null, backgroundMode: 'single' });
+    notifyBackgroundUpdate();
+  };
+
+  const handleDeleteImage = async (id: string) => {
+    const deletedIndex = backgroundImages.findIndex((image) => image.id === id);
+    const nextImages = await deleteBackgroundImage(id);
+    setBackgroundImages(nextImages);
+
+    if (settings.activeBackgroundId === id) {
+      const fallbackIndex = Math.min(Math.max(deletedIndex, 0), nextImages.length - 1);
+      updateSettings({ activeBackgroundId: nextImages[fallbackIndex]?.id ?? null });
+    }
+
+    notifyBackgroundUpdate();
+  };
+
+  const stepBackground = (direction: -1 | 1) => {
+    if (backgroundImages.length === 0) return;
+    const currentIndex = backgroundImages.findIndex(
+      (image) => image.id === settings.activeBackgroundId,
+    );
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextIndex = (
+      safeIndex + direction + backgroundImages.length
+    ) % backgroundImages.length;
+    updateSettings({ activeBackgroundId: backgroundImages[nextIndex].id });
   };
 
   const handleAddMode = () => {
@@ -35,7 +113,7 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <div style={{
-      position: 'fixed', top: 0, right: 0, bottom: 0, width: '400px',
+      position: 'fixed', top: 0, right: 0, bottom: 0, width: 'min(400px, 100vw)',
       background: 'var(--glass-drawer-bg)',
       backdropFilter: 'blur(20px)',
       borderLeft: '1px solid var(--glass-border)',
@@ -67,14 +145,126 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <h3>Background</h3>
         <div style={{ display: 'flex', gap: '10px', marginBottom: '1rem' }}>
           <label className="btn-secondary flex-center" style={{ flex: 1, cursor: 'pointer', gap: '8px' }}>
-            <Upload size={18} /> Upload Image
-            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+            <Upload size={18} /> {isImportingImages ? 'Importing…' : 'Add Images'}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={isImportingImages}
+              style={{ display: 'none' }}
+              onChange={handleImageUpload}
+            />
           </label>
-          <button className="btn-secondary" onClick={handleClearImage} title="Clear Image">
+          <button
+            className="btn-secondary"
+            onClick={handleClearImages}
+            title="Clear all images"
+            aria-label="Clear all background images"
+            disabled={backgroundImages.length === 0}
+          >
             <Trash2 size={18} />
           </button>
         </div>
+        <div className="background-library-summary">
+          {backgroundImages.length === 0
+            ? 'No background images'
+            : `${backgroundImages.length} image${backgroundImages.length === 1 ? '' : 's'} in library`}
+        </div>
+        {imageImportError && <div className="background-library-error">{imageImportError}</div>}
+
+        {backgroundImages.length > 0 && (
+          <div className="background-library-grid">
+            {backgroundImages.map((image, index) => {
+              const isActive = image.id === settings.activeBackgroundId
+                || (!settings.activeBackgroundId && index === 0);
+              return (
+                <div
+                  key={image.id}
+                  className={`background-thumbnail ${isActive ? 'active' : ''}`}
+                >
+                  <button
+                    className="background-thumbnail-select"
+                    onClick={() => updateSettings({ activeBackgroundId: image.id })}
+                    title={image.name}
+                    aria-label={`Use ${image.name} as background`}
+                  >
+                    <img src={image.dataUrl} alt="" />
+                    <span>{index + 1}</span>
+                  </button>
+                  <button
+                    className="background-thumbnail-delete"
+                    onClick={() => handleDeleteImage(image.id)}
+                    title={`Delete ${image.name}`}
+                    aria-label={`Delete ${image.name}`}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="background-mode-grid">
+          <button
+            className={`btn-secondary ${settings.backgroundMode === 'single' ? 'active' : ''}`}
+            onClick={() => updateSettings({ backgroundMode: 'single' })}
+          >
+            Single
+          </button>
+          <button
+            className={`btn-secondary ${settings.backgroundMode === 'carousel' ? 'active' : ''}`}
+            onClick={() => updateSettings({ backgroundMode: 'carousel' })}
+            disabled={backgroundImages.length < 2}
+            title={backgroundImages.length < 2 ? 'Add at least two images' : 'Rotate backgrounds automatically'}
+          >
+            Carousel
+          </button>
+        </div>
+
+        {backgroundImages.length > 1 && (
+          <div className="background-stepper">
+            <button
+              className="btn-icon"
+              onClick={() => stepBackground(-1)}
+              aria-label="Previous background"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span>
+              {Math.max(
+                backgroundImages.findIndex((image) => image.id === settings.activeBackgroundId) + 1,
+                1,
+              )}
+              {' / '}
+              {backgroundImages.length}
+            </span>
+            <button
+              className="btn-icon"
+              onClick={() => stepBackground(1)}
+              aria-label="Next background"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
+
         <div className="flex-col" style={{ gap: '15px' }}>
+          {settings.backgroundMode === 'carousel' && backgroundImages.length > 1 && (
+            <div className="flex-col" style={{ gap: '8px' }}>
+              <label>Change Every ({settings.backgroundInterval || 15}s)</label>
+              <input
+                type="range"
+                min="5"
+                max="120"
+                step="5"
+                value={settings.backgroundInterval || 15}
+                onChange={(e) => updateSettings({ backgroundInterval: Number(e.target.value) })}
+                style={{ width: '100%' }}
+              />
+            </div>
+          )}
+
           <div className="flex-col" style={{ gap: '8px' }}>
             <label>Background Dimness ({Math.round(settings.backgroundOpacity * 100)}%)</label>
             <input 

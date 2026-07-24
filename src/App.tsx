@@ -1,6 +1,7 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useSettings } from './context/SettingsContext';
-import { getBackgroundImage } from './lib/storage';
+import { getBackgroundImages } from './lib/storage';
+import type { BackgroundImage } from './lib/types';
 import MainTimer from './components/MainTimer';
 import { Settings, BarChart2, Sun, Moon } from 'lucide-react';
 
@@ -9,21 +10,67 @@ const StatsModal = lazy(() => import('./components/StatsModal'));
 
 function App() {
   const { settings, updateSettings } = useSettings();
-  const [bgImage, setBgImage] = useState<string | null>(null);
+  const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>([]);
   
   const [showSettings, setShowSettings] = useState(false);
   const [showStats, setShowStats] = useState(false);
 
+  const loadBackgroundImages = useCallback(() => {
+    getBackgroundImages().then(setBackgroundImages);
+  }, []);
+
   useEffect(() => {
-    getBackgroundImage().then(setBgImage);
+    loadBackgroundImages();
     
     // Listen for custom event to update background without refresh
-    const handleBgUpdate = () => {
-      getBackgroundImage().then(setBgImage);
-    };
+    const handleBgUpdate = () => loadBackgroundImages();
     window.addEventListener('pomodoro_bg_update', handleBgUpdate);
     return () => window.removeEventListener('pomodoro_bg_update', handleBgUpdate);
-  }, []);
+  }, [loadBackgroundImages]);
+
+  const activeBackgroundIndex = backgroundImages.findIndex(
+    (image) => image.id === settings.activeBackgroundId,
+  );
+  const activeBackground = activeBackgroundIndex >= 0
+    ? backgroundImages[activeBackgroundIndex]
+    : backgroundImages[0] ?? null;
+
+  useEffect(() => {
+    if (backgroundImages.length === 0) {
+      if (settings.activeBackgroundId !== null) {
+        updateSettings({ activeBackgroundId: null });
+      }
+      return;
+    }
+
+    if (activeBackgroundIndex < 0) {
+      updateSettings({ activeBackgroundId: backgroundImages[0].id });
+    }
+  }, [
+    activeBackgroundIndex,
+    backgroundImages,
+    settings.activeBackgroundId,
+    updateSettings,
+  ]);
+
+  useEffect(() => {
+    if (settings.backgroundMode !== 'carousel' || backgroundImages.length < 2) return;
+
+    const intervalSeconds = Math.max(5, settings.backgroundInterval || 15);
+    const timer = window.setTimeout(() => {
+      const currentIndex = activeBackgroundIndex >= 0 ? activeBackgroundIndex : 0;
+      const nextImage = backgroundImages[(currentIndex + 1) % backgroundImages.length];
+      updateSettings({ activeBackgroundId: nextImage.id });
+    }, intervalSeconds * 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [
+    activeBackgroundIndex,
+    backgroundImages,
+    settings.backgroundInterval,
+    settings.backgroundMode,
+    updateSettings,
+  ]);
 
   // Compute Theme Logic
   const [systemDark, setSystemDark] = useState(window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -48,10 +95,11 @@ function App() {
   return (
     <>
       <div 
+        key={activeBackground?.id ?? 'no-background'}
         className="app-background"
         style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: bgImage ? `url(${bgImage})` : 'none',
+          backgroundImage: activeBackground ? `url(${activeBackground.dataUrl})` : 'none',
           backgroundSize: settings.bgSize ?? 'cover',
           backgroundPosition: `${settings.bgPositionX ?? 50}% ${settings.bgPositionY ?? 50}%`,
           backgroundRepeat: 'no-repeat',
@@ -69,13 +117,13 @@ function App() {
       />
       
       <div style={{ position: 'absolute', top: 20, right: 20, display: 'flex', gap: '10px' }}>
-        <button className="btn-icon glass" onClick={toggleTheme}>
+        <button className="btn-icon glass" onClick={toggleTheme} aria-label="Toggle theme">
           {computedTheme === 'dark' ? <Moon size={24} /> : <Sun size={24} />}
         </button>
-        <button className="btn-icon glass" onClick={() => setShowStats(true)}>
+        <button className="btn-icon glass" onClick={() => setShowStats(true)} aria-label="Open statistics">
           <BarChart2 size={24} />
         </button>
-        <button className="btn-icon glass" onClick={() => setShowSettings(true)}>
+        <button className="btn-icon glass" onClick={() => setShowSettings(true)} aria-label="Open settings">
           <Settings size={24} />
         </button>
       </div>

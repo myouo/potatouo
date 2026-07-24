@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useCallback, useContext, useState } from 'react';
 import type { Settings, Mode } from '../lib/types';
 import { DEFAULT_MODES } from '../lib/types';
 import { getSettings, saveSettings, getModes, saveModes } from '../lib/storage';
@@ -20,11 +20,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [settings, setSettingsState] = useState<Settings>(() => getSettings());
   const [modes, setModesState] = useState<Mode[]>(() => getModes());
 
-  const updateSettings = (partial: Partial<Settings>) => {
-    const nextSettings = { ...settings, ...partial };
-    setSettingsState(nextSettings);
-    saveSettings(nextSettings);
-  };
+  const updateSettings = useCallback((partial: Partial<Settings>) => {
+    setSettingsState((currentSettings) => {
+      const nextSettings = { ...currentSettings, ...partial };
+      saveSettings(nextSettings);
+      return nextSettings;
+    });
+  }, []);
 
   const addMode = (mode: Omit<Mode, 'id'>) => {
     const newMode: Mode = { ...mode, id: Math.random().toString(36).substr(2, 9) };
