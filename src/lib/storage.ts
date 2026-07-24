@@ -1,8 +1,10 @@
 import { get, set, del } from 'idb-keyval';
-import type { Mode, Session, Settings } from './types';
+import type { BackgroundImage, Mode, Session, Settings } from './types';
 import { DEFAULT_MODES, DEFAULT_SETTINGS } from './types';
 
 const PREFIX = 'potatouo_v4_';
+const BACKGROUND_LIBRARY_KEY = `${PREFIX}background_images`;
+const LEGACY_BACKGROUND_KEY = `${PREFIX}background`;
 
 export const getSettings = (): Settings => {
   const store = localStorage.getItem(`${PREFIX}settings`);
@@ -73,30 +75,69 @@ export const saveTimerBackup = (backup: TimerBackupState) => {
   localStorage.setItem(`${PREFIX}engine_backup`, JSON.stringify(backup));
 };
 
-export const getBackgroundImage = async (): Promise<string | null> => {
+const isBackgroundImage = (value: unknown): value is BackgroundImage => {
+  if (!value || typeof value !== 'object') return false;
+  const image = value as Partial<BackgroundImage>;
+  return (
+    typeof image.id === 'string' &&
+    typeof image.name === 'string' &&
+    typeof image.dataUrl === 'string' &&
+    typeof image.createdAt === 'number'
+  );
+};
+
+export const getBackgroundImages = async (): Promise<BackgroundImage[]> => {
   try {
-    const dataUrl = await get(`${PREFIX}background`);
-    return dataUrl || null;
+    const stored = await get<unknown>(BACKGROUND_LIBRARY_KEY);
+    if (Array.isArray(stored)) {
+      const validImages = stored.filter(isBackgroundImage);
+      if (validImages.length !== stored.length) {
+        await set(BACKGROUND_LIBRARY_KEY, validImages);
+      }
+      return validImages;
+    }
+
+    const legacyDataUrl = await get<unknown>(LEGACY_BACKGROUND_KEY);
+    if (typeof legacyDataUrl === 'string' && legacyDataUrl) {
+      const migratedImage: BackgroundImage = {
+        id: 'legacy-background',
+        name: 'Imported background',
+        dataUrl: legacyDataUrl,
+        createdAt: Date.now(),
+      };
+      await set(BACKGROUND_LIBRARY_KEY, [migratedImage]);
+      await del(LEGACY_BACKGROUND_KEY);
+      return [migratedImage];
+    }
+
+    return [];
   } catch (e) {
-    console.error('Failed to get background image', e);
-    return null;
+    console.error('Failed to get background images', e);
+    return [];
   }
 };
 
-export const saveBackgroundImage = async (dataUrl: string) => {
-  try {
-    await set(`${PREFIX}background`, dataUrl);
-  } catch (e) {
-    console.error('Failed to save background image', e);
-  }
+export const addBackgroundImages = async (
+  images: BackgroundImage[],
+): Promise<BackgroundImage[]> => {
+  const currentImages = await getBackgroundImages();
+  const nextImages = [...currentImages, ...images];
+  await set(BACKGROUND_LIBRARY_KEY, nextImages);
+  return nextImages;
 };
 
-export const clearBackgroundImage = async () => {
-  try {
-    await del(`${PREFIX}background`);
-  } catch (e) {
-    console.error('Failed to clear background image', e);
-  }
+export const deleteBackgroundImage = async (id: string): Promise<BackgroundImage[]> => {
+  const currentImages = await getBackgroundImages();
+  const nextImages = currentImages.filter((image) => image.id !== id);
+  await set(BACKGROUND_LIBRARY_KEY, nextImages);
+  return nextImages;
+};
+
+export const clearBackgroundImages = async () => {
+  await Promise.all([
+    del(BACKGROUND_LIBRARY_KEY),
+    del(LEGACY_BACKGROUND_KEY),
+  ]);
 };
 
 export const getHistory = async (): Promise<Session[]> => {

@@ -13,11 +13,21 @@ export interface Session {
   date: number; // timestamp
 }
 
+export interface BackgroundImage {
+  id: string;
+  name: string;
+  dataUrl: string;
+  createdAt: number;
+}
+
 export interface Settings {
   currentModeId: string;
   volume: number;
   notificationsEnabled: boolean;
   backgroundOpacity: number;
+  backgroundMode: 'single' | 'carousel';
+  backgroundInterval: number;
+  activeBackgroundId: string | null;
   bgPositionX: number;
   bgPositionY: number;
   bgSize: 'cover' | 'contain';
@@ -38,6 +48,9 @@ export const DEFAULT_SETTINGS: Settings = {
   volume: 0.8,
   notificationsEnabled: false,
   backgroundOpacity: 0.6,
+  backgroundMode: 'single',
+  backgroundInterval: 15,
+  activeBackgroundId: null,
   bgPositionX: 50,
   bgPositionY: 50,
   bgSize: 'cover',
