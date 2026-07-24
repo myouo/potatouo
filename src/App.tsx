@@ -1,12 +1,61 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useSettings } from './context/SettingsContext';
 import { getBackgroundImages } from './lib/storage';
-import type { BackgroundImage } from './lib/types';
+import {
+  BACKGROUND_TRANSITIONS,
+  type BackgroundImage,
+  type BackgroundTransition,
+  type BackgroundTransitionSetting,
+} from './lib/types';
 import MainTimer from './components/MainTimer';
 import { Settings, BarChart2, Sun, Moon } from 'lucide-react';
 
 const SettingsDrawer = lazy(() => import('./components/SettingsDrawer'));
 const StatsModal = lazy(() => import('./components/StatsModal'));
+
+interface BackgroundLayerProps {
+  image: BackgroundImage | null;
+  transition: BackgroundTransitionSetting;
+  size: 'cover' | 'contain';
+  positionX: number;
+  positionY: number;
+}
+
+const pickBackgroundTransition = (
+  setting: BackgroundTransitionSetting,
+): BackgroundTransition => {
+  if (setting !== 'random') return setting;
+  return BACKGROUND_TRANSITIONS[
+    Math.floor(Math.random() * BACKGROUND_TRANSITIONS.length)
+  ];
+};
+
+const BackgroundLayer = ({
+  image,
+  transition,
+  size,
+  positionX,
+  positionY,
+}: BackgroundLayerProps) => {
+  const [resolvedTransition] = useState<BackgroundTransition>(
+    () => pickBackgroundTransition(transition),
+  );
+
+  return (
+    <div
+      className={`app-background background-transition-${resolvedTransition}`}
+      data-background-transition={resolvedTransition}
+      style={{
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundImage: image ? `url(${image.dataUrl})` : 'none',
+        backgroundSize: size,
+        backgroundPosition: `${positionX}% ${positionY}%`,
+        backgroundRepeat: 'no-repeat',
+        zIndex: -2,
+      }}
+    />
+  );
+};
 
 function App() {
   const { settings, updateSettings } = useSettings();
@@ -94,17 +143,13 @@ function App() {
 
   return (
     <>
-      <div 
-        key={activeBackground?.id ?? 'no-background'}
-        className="app-background"
-        style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundImage: activeBackground ? `url(${activeBackground.dataUrl})` : 'none',
-          backgroundSize: settings.bgSize ?? 'cover',
-          backgroundPosition: `${settings.bgPositionX ?? 50}% ${settings.bgPositionY ?? 50}%`,
-          backgroundRepeat: 'no-repeat',
-          zIndex: -2,
-        }}
+      <BackgroundLayer
+        key={`${activeBackground?.id ?? 'no-background'}:${settings.backgroundTransition}`}
+        image={activeBackground}
+        transition={settings.backgroundTransition}
+        size={settings.bgSize ?? 'cover'}
+        positionX={settings.bgPositionX ?? 50}
+        positionY={settings.bgPositionY ?? 50}
       />
       <div 
         className="app-overlay"

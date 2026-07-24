@@ -20,6 +20,19 @@ export interface BackgroundImage {
   createdAt: number;
 }
 
+export const BACKGROUND_TRANSITIONS = [
+  'fade',
+  'zoom-in',
+  'zoom-out',
+  'slide-left',
+  'slide-up',
+  'blur',
+  'wipe',
+] as const;
+
+export type BackgroundTransition = typeof BACKGROUND_TRANSITIONS[number];
+export type BackgroundTransitionSetting = BackgroundTransition | 'random';
+
 export interface Settings {
   currentModeId: string;
   volume: number;
@@ -27,6 +40,7 @@ export interface Settings {
   backgroundOpacity: number;
   backgroundMode: 'single' | 'carousel';
   backgroundInterval: number;
+  backgroundTransition: BackgroundTransitionSetting;
   activeBackgroundId: string | null;
   bgPositionX: number;
   bgPositionY: number;
@@ -50,6 +64,7 @@ export const DEFAULT_SETTINGS: Settings = {
   backgroundOpacity: 0.6,
   backgroundMode: 'single',
   backgroundInterval: 15,
+  backgroundTransition: 'fade',
   activeBackgroundId: null,
   bgPositionX: 50,
   bgPositionY: 50,

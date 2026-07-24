@@ -146,12 +146,77 @@ input[type="range"] {
 }
 
 .app-background {
-  animation: backgroundFade 0.7s ease both;
+  backface-visibility: hidden;
+  will-change: opacity, transform, filter, clip-path;
+}
+
+.background-transition-fade {
+  animation: backgroundFade 0.8s ease both;
+}
+
+.background-transition-zoom-in {
+  animation: backgroundZoomIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.background-transition-zoom-out {
+  animation: backgroundZoomOut 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.background-transition-slide-left {
+  animation: backgroundSlideLeft 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.background-transition-slide-up {
+  animation: backgroundSlideUp 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.background-transition-blur {
+  animation: backgroundBlur 1s ease both;
+}
+
+.background-transition-wipe {
+  animation: backgroundWipe 0.9s cubic-bezier(0.65, 0, 0.35, 1) both;
 }
 
 @keyframes backgroundFade {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes backgroundZoomIn {
+  from { opacity: 0; transform: scale(1.1); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes backgroundZoomOut {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes backgroundSlideLeft {
+  from { opacity: 0.15; transform: translateX(7%) scale(1.03); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes backgroundSlideUp {
+  from { opacity: 0.15; transform: translateY(7%) scale(1.03); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes backgroundBlur {
+  from { opacity: 0; filter: blur(20px); transform: scale(1.05); }
+  to { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+
+@keyframes backgroundWipe {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-background {
+    animation-duration: 0.01ms;
+  }
 }
 
 .animate-fade-in {

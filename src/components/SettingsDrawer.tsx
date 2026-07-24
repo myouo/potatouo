@@ -6,7 +6,7 @@ import {
   deleteBackgroundImage,
   getBackgroundImages,
 } from '../lib/storage';
-import type { BackgroundImage } from '../lib/types';
+import type { BackgroundImage, BackgroundTransitionSetting } from '../lib/types';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Upload, X } from 'lucide-react';
 
 const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
@@ -262,6 +262,29 @@ const SettingsDrawer: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 onChange={(e) => updateSettings({ backgroundInterval: Number(e.target.value) })}
                 style={{ width: '100%' }}
               />
+            </div>
+          )}
+
+          {backgroundImages.length > 1 && (
+            <div className="flex-col" style={{ gap: '8px' }}>
+              <label htmlFor="background-transition">Transition Animation</label>
+              <select
+                id="background-transition"
+                className="modern-input"
+                value={settings.backgroundTransition}
+                onChange={(e) => updateSettings({
+                  backgroundTransition: e.target.value as BackgroundTransitionSetting,
+                })}
+              >
+                <option value="fade">Fade</option>
+                <option value="zoom-in">Zoom In</option>
+                <option value="zoom-out">Zoom Out</option>
+                <option value="slide-left">Slide Left</option>
+                <option value="slide-up">Slide Up</option>
+                <option value="blur">Soft Blur</option>
+                <option value="wipe">Wipe</option>
+                <option value="random">Random Every Time</option>
+              </select>
             </div>
           )}
 
