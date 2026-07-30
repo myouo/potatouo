@@ -119,6 +119,12 @@ input[type="range"] {
   margin: 20px 0;
 }
 
+.timer-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -133,6 +139,13 @@ input[type="range"] {
   .btn-icon {
     width: 56px;
     height: 56px;
+  }
+  .timer-controls {
+    gap: 12px;
+  }
+  .timer-controls .btn-icon:not(.timer-play-button) {
+    width: 44px;
+    height: 44px;
   }
   .stats-grid {
     grid-template-columns: 1fr;

@@ -46,6 +46,7 @@ interface TimerContextType {
   pauseTimer: () => void;
   stopTimer: () => void;
   resetTimer: () => void;
+  resetPhase: () => void;
   skipPhase: () => void;
   startStopwatch: () => void;
   pauseStopwatch: () => void;
@@ -363,6 +364,16 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  const resetPomodoroPhase = () => {
+    const state = engineRef.current.pomodoro;
+    if (state.status === 'stopped') return;
+
+    state.accumulatedTime = 0;
+    state.startTimestamp = state.status === 'running' ? getTimestamp() : null;
+    saveStateToStorage();
+    syncUI();
+  };
+
   const startStopwatch = () => {
     const state = engineRef.current.stopwatch;
     if (state.status === 'running') return;
@@ -454,6 +465,7 @@ export const TimerProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         pauseTimer: pausePomodoro,
         stopTimer: stopPomodoro,
         resetTimer: stopPomodoro,
+        resetPhase: resetPomodoroPhase,
         skipPhase: () => void handlePhaseComplete(),
         startStopwatch,
         pauseStopwatch,

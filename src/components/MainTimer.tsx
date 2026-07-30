@@ -1,12 +1,12 @@
 import React from 'react';
 import { useTimer } from '../context/TimerContext';
 import { useSettings } from '../context/SettingsContext';
-import { Play, Pause, Square, SkipForward } from 'lucide-react';
+import { Play, Pause, RotateCcw, Square, SkipForward } from 'lucide-react';
 
 const MainTimer: React.FC = () => {
   const { 
     activeTimerMode, setActiveTimerMode,
-    phase, status, remainingTime, loopCount, startTimer, pauseTimer, resetTimer, skipPhase,
+    phase, status, remainingTime, loopCount, startTimer, pauseTimer, resetTimer, resetPhase, skipPhase,
     stopwatchStatus, stopwatchElapsed, startStopwatch, pauseStopwatch, stopStopwatch
   } = useTimer();
   const { currentMode, settings, updateSettings } = useSettings();
@@ -104,7 +104,7 @@ const MainTimer: React.FC = () => {
         )}
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+      <div className="timer-controls">
         {!isStopped && (
           <button className="btn-icon" onClick={handleStop} title="Stop / Reset">
             <Square size={20} />
@@ -112,7 +112,7 @@ const MainTimer: React.FC = () => {
         )}
         
         <button 
-          className="btn-icon" 
+          className="btn-icon timer-play-button"
           style={{ width: '72px', height: '72px', background: 'var(--accent-color)' }}
           onClick={handleTogglePlay}
         >
@@ -122,6 +122,17 @@ const MainTimer: React.FC = () => {
         {activeTimerMode === 'pomodoro' && phase === 'rest' && status !== 'stopped' && (
           <button className="btn-icon" onClick={skipPhase} title="Skip Break">
             <SkipForward size={20} />
+          </button>
+        )}
+
+        {activeTimerMode === 'pomodoro' && status !== 'stopped' && (
+          <button
+            className="btn-icon"
+            onClick={resetPhase}
+            title="Reset Current Phase"
+            aria-label="Reset current phase"
+          >
+            <RotateCcw size={20} />
           </button>
         )}
       </div>
